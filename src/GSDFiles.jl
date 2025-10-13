@@ -9,7 +9,7 @@ export GSDWriter, write_chunk!, write_chunk_raw!, end_frame!, close!,
        open_gsd, close_gsd, end_frame!,
        write_configuration_box!, write_configuration_step!, write_configuration_dimensions!,
        write_particles_N!, write_particles_types!, write_particles_typeid!,
-       write_particles_position!, write_particles_velocity!
+       write_particles_position!, write_particles_velocity!, write_particles_force!
 
 export open_read, close, nframes, read_frame,
        read_bonds, read_angles, read_dihedrals, read_impropers
@@ -153,7 +153,7 @@ mutable struct GSDWriter
     current_frame::UInt64
 end
 
-function GSDWriter(path::AbstractString; application="NonEqSim", schema="hoomd", schema_version=(1,4))
+function GSDWriter(path::AbstractString; application="NonEqSimGPU", schema="hoomd", schema_version=(1,4))
     io = open(path, "w")   # binary by default
     hdr = Header(
         GSD_MAGIC,
@@ -466,8 +466,16 @@ function read_frame(r::GSDReader, i::Integer)::Frame
     vel_e = only(_byname(r, ents, "particles/velocity"))
     velocity = _read_mat_f32(r.io, vel_e)  # N×3
 
+    # Optional: custom extension field for per-particle force (N×3 Float32)
+    frc_e = _maybe_one(r, ents, "particles/force")
+
     conf = (step = step, dimensions = dims, box = box)
-    parts = (N = N, types = types, typeid = typeid, position = position, velocity = velocity)
+    if frc_e === nothing
+        parts = (N = N, types = types, typeid = typeid, position = position, velocity = velocity)
+    else
+        force = _read_mat_f32(r.io, frc_e)  # N×3
+        parts = (N = N, types = types, typeid = typeid, position = position, velocity = velocity, force = force)
+    end
     Frame(conf, parts)
 end
 
