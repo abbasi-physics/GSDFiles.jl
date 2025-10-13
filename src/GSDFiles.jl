@@ -2,7 +2,6 @@ module GSDFiles
 
 import Base: close
 
-
 # =========================
 # Public API (exports)
 # =========================
