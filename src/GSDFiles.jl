@@ -8,7 +8,7 @@ import Base: close
 export GSDWriter, write_chunk!, write_chunk_raw!, end_frame!, close!,
        open_gsd, close_gsd, end_frame!,
        write_configuration_box!, write_configuration_step!, write_configuration_dimensions!,
-       write_particles_N!, write_particles_types!, write_particles_typeid!,
+       write_particles_N!, write_particles_types!, write_particles_typeids!,
        write_particles_positions!, write_particles_velocities!, write_particles_forces!
 
 export open_read, close, nframes, read_frame,
@@ -456,9 +456,9 @@ function read_frame(r::GSDReader, i::Integer)::Frame
     types_e = only(_byname(r, ents, "particles/types"))
     types = _decode_types(r.io, types_e)
 
-    tid_e = only(_byname(r, ents, "particles/typeid"))
-    tid_e.type == _R_UINT32 || error("particles/typeid dtype mismatch")
-    typeid = _read_vec(r.io, tid_e, UInt32)
+    tid_e = only(_byname(r, ents, "particles/typeids"))
+    tid_e.type == _R_UINT32 || error("particles/typeids dtype mismatch")
+    typeids = _read_vec(r.io, tid_e, UInt32)
 
     pos_e = only(_byname(r, ents, "particles/positions"))
     positions = _read_mat_f32(r.io, pos_e)  # N×3
@@ -471,17 +471,17 @@ function read_frame(r::GSDReader, i::Integer)::Frame
 
     conf = (step = step, dimensions = dims, box = box)
     if frc_e === nothing
-        parts = (N = N, types = types, typeid = typeid, positions = positions, velocities = velocities)
+        parts = (N = N, types = types, typeids = typeids, positions = positions, velocities = velocities)
     else
         forces = _read_mat_f32(r.io, frc_e)  # N×3
-        parts = (N = N, types = types, typeid = typeid, positions = positions, velocities = velocities, forces = forces)
+        parts = (N = N, types = types, typeids = typeids, positions = positions, velocities = velocities, forces = forces)
     end
     Frame(conf, parts)
 end
 
 
 # ---- Topology readers -----------------------------------------------------
-# Each returns (N, types, typeid, group) where group is N×k (k=2 bonds, 3 angles, 4 dihedrals/impropers)
+# Each returns (N, types, typeids, group) where group is N×k (k=2 bonds, 3 angles, 4 dihedrals/impropers)
 
 function read_bonds(r::GSDReader, i::Integer)
     nf = nframes(r); 1 ≤ i ≤ nf || throw(BoundsError("frame index $i out of 1:$nf"))
@@ -492,20 +492,20 @@ function read_bonds(r::GSDReader, i::Integer)
     types = types_e === nothing ? String[] : _decode_types(r.io, types_e)
 
     N_e  = _maybe_one(r, ents, "bonds/N")
-    tid_e = _maybe_one(r, ents, "bonds/typeid")
+    tid_e = _maybe_one(r, ents, "bonds/typeids")
     grp_e = _maybe_one(r, ents, "bonds/group")
 
     if N_e === nothing || tid_e === nothing || grp_e === nothing
-        return (N = 0, types = types, typeid = UInt32[], group = reshape(UInt32[], 0, 2))
+        return (N = 0, types = types, typeids = UInt32[], group = reshape(UInt32[], 0, 2))
     end
 
     N = Int(_read_scalar(r.io, N_e, UInt32))
-    tid_e.type == _R_UINT32 || error("bonds/typeid dtype mismatch")
+    tid_e.type == _R_UINT32 || error("bonds/typeids dtype mismatch")
     grp_e.type == _R_UINT32 || error("bonds/group dtype mismatch")
-    typeid = _read_vec(r.io, tid_e, UInt32)
+    typeids = _read_vec(r.io, tid_e, UInt32)
     group  = _read_mat_u32(r.io, grp_e)
     @assert size(group,2) == 2 "bonds/group must have 2 columns"
-    return (N = N, types = types, typeid = typeid, group = group)
+    return (N = N, types = types, typeids = typeids, group = group)
 end
 
 function read_angles(r::GSDReader, i::Integer)
@@ -516,20 +516,20 @@ function read_angles(r::GSDReader, i::Integer)
     types = types_e === nothing ? String[] : _decode_types(r.io, types_e)
 
     N_e  = _maybe_one(r, ents, "angles/N")
-    tid_e = _maybe_one(r, ents, "angles/typeid")
+    tid_e = _maybe_one(r, ents, "angles/typeids")
     grp_e = _maybe_one_of(r, ents, ["angles/angle", "angles/group"])
 
     if N_e === nothing || tid_e === nothing || grp_e === nothing
-        return (N = 0, types = types, typeid = UInt32[], group = reshape(UInt32[], 0, 3))
+        return (N = 0, types = types, typeids = UInt32[], group = reshape(UInt32[], 0, 3))
     end
 
     N = Int(_read_scalar(r.io, N_e, UInt32))
-    tid_e.type == _R_UINT32 || error("angles/typeid dtype mismatch")
+    tid_e.type == _R_UINT32 || error("angles/typeids dtype mismatch")
     grp_e.type == _R_UINT32 || error("angles/angle dtype mismatch")
-    typeid = _read_vec(r.io, tid_e, UInt32)
+    typeids = _read_vec(r.io, tid_e, UInt32)
     group  = _read_mat_u32(r.io, grp_e)
     @assert size(group,2) == 3 "angles/angle must have 3 columns"
-    return (N = N, types = types, typeid = typeid, group = group)
+    return (N = N, types = types, typeids = typeids, group = group)
 end
 
 function read_dihedrals(r::GSDReader, i::Integer)
@@ -540,20 +540,20 @@ function read_dihedrals(r::GSDReader, i::Integer)
     types = types_e === nothing ? String[] : _decode_types(r.io, types_e)
 
     N_e  = _maybe_one(r, ents, "dihedrals/N")
-    tid_e = _maybe_one(r, ents, "dihedrals/typeid")
+    tid_e = _maybe_one(r, ents, "dihedrals/typeids")
     grp_e = _maybe_one_of(r, ents, ["dihedrals/dihedral", "dihedrals/group"])
 
     if N_e === nothing || tid_e === nothing || grp_e === nothing
-        return (N = 0, types = types, typeid = UInt32[], group = reshape(UInt32[], 0, 4))
+        return (N = 0, types = types, typeids = UInt32[], group = reshape(UInt32[], 0, 4))
     end
 
     N = Int(_read_scalar(r.io, N_e, UInt32))
-    tid_e.type == _R_UINT32 || error("dihedrals/typeid dtype mismatch")
+    tid_e.type == _R_UINT32 || error("dihedrals/typeids dtype mismatch")
     grp_e.type == _R_UINT32 || error("dihedrals/dihedral dtype mismatch")
-    typeid = _read_vec(r.io, tid_e, UInt32)
+    typeids = _read_vec(r.io, tid_e, UInt32)
     group  = _read_mat_u32(r.io, grp_e)
     @assert size(group,2) == 4 "dihedrals/dihedral must have 4 columns"
-    return (N = N, types = types, typeid = typeid, group = group)
+    return (N = N, types = types, typeids = typeids, group = group)
 end
 
 function read_impropers(r::GSDReader, i::Integer)
@@ -564,20 +564,20 @@ function read_impropers(r::GSDReader, i::Integer)
     types = types_e === nothing ? String[] : _decode_types(r.io, types_e)
 
     N_e  = _maybe_one(r, ents, "impropers/N")
-    tid_e = _maybe_one(r, ents, "impropers/typeid")
+    tid_e = _maybe_one(r, ents, "impropers/typeids")
     grp_e = _maybe_one_of(r, ents, ["impropers/improper", "impropers/group"])
 
     if N_e === nothing || tid_e === nothing || grp_e === nothing
-        return (N = 0, types = types, typeid = UInt32[], group = reshape(UInt32[], 0, 4))
+        return (N = 0, types = types, typeids = UInt32[], group = reshape(UInt32[], 0, 4))
     end
 
     N = Int(_read_scalar(r.io, N_e, UInt32))
-    tid_e.type == _R_UINT32 || error("impropers/typeid dtype mismatch")
+    tid_e.type == _R_UINT32 || error("impropers/typeids dtype mismatch")
     grp_e.type == _R_UINT32 || error("impropers/improper dtype mismatch")
-    typeid = _read_vec(r.io, tid_e, UInt32)
+    typeids = _read_vec(r.io, tid_e, UInt32)
     group  = _read_mat_u32(r.io, grp_e)
     @assert size(group,2) == 4 "impropers/improper must have 4 columns"
-    return (N = N, types = types, typeid = typeid, group = group)
+    return (N = N, types = types, typeids = typeids, group = group)
 end
 
 

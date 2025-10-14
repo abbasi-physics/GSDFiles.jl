@@ -3,16 +3,16 @@ module HOOMDWriter
 using ..GSDFiles: GSDFilesHandle, write_chunk_raw!, rowmajor
 
 export write_configuration_step!, write_configuration_dimensions!, write_configuration_box!,
-       write_particles_N!, write_particles_types!, write_particles_typeid!,
+       write_particles_N!, write_particles_types!, write_particles_typeids!,
        write_particles_positions!, write_particles_velocities!, write_particles_forces!,
        write_particles_diameter!, write_particles_diameter_by_type!,
        write_particles_type_shapes!, write_particles_orientation!,
        write_particles_inertia!, write_particles_angmom!
 
-export write_bonds_N!, write_bonds_types!, write_bonds_typeid!, write_bonds_group!,
-       write_angles_N!, write_angles_types!, write_angles_typeid!, write_angles_group!,
-       write_dihedrals_N!, write_dihedrals_types!, write_dihedrals_typeid!, write_dihedrals_group!,
-       write_impropers_N!, write_impropers_types!, write_impropers_typeid!, write_impropers_group!
+export write_bonds_N!, write_bonds_types!, write_bonds_typeids!, write_bonds_group!,
+       write_angles_N!, write_angles_types!, write_angles_typeids!, write_angles_group!,
+       write_dihedrals_N!, write_dihedrals_types!, write_dihedrals_typeids!, write_dihedrals_group!,
+       write_impropers_N!, write_impropers_types!, write_impropers_typeids!, write_impropers_group!
 
 # OVITO on-disk type codes (empirically: +1 vs upstream C enum)
 const OVITO_UINT8    = UInt8(1)
@@ -94,15 +94,15 @@ end
 
 "Convenience: set diameters from type IDs and a per‑type list (0‑based ids)"
 function write_particles_diameter_by_type!(h::GSDFilesHandle,
-                                           typeid::AbstractVector{<:Integer},
+                                           typeids::AbstractVector{<:Integer},
                                            per_type::AbstractVector{<:Real})
-    N = length(typeid)
+    N = length(typeids)
     @assert !isempty(h.typenames) "Call write_particles_types! (or set types) before diameters"
     @assert length(per_type) == length(h.typenames) "per_type length must match number of types"
     data = Vector{Float32}(undef, N)
     @inbounds for i in 1:N
-        tid = typeid[i]
-        @assert 0 <= tid < length(per_type) "typeid out of range"
+        tid = typeids[i]
+        @assert 0 <= tid < length(per_type) "typeids out of range"
         data[i] = Float32(per_type[tid+1])    # type ids are 0‑based; Julia vectors 1‑based
     end
     write_chunk_raw!(h.user, "particles/diameter";
@@ -127,8 +127,8 @@ function write_particles_types!(h::GSDFilesHandle, typenames::Vector{String})
     return nothing
 end
 
-"particles/typeid : uint32 N×1 (force OVITO code)"
-function write_particles_typeid!(h::GSDFilesHandle, ids::AbstractVector{<:Integer})
+"particles/typeids : uint32 N×1 (force OVITO code)"
+function write_particles_typeids!(h::GSDFilesHandle, ids::AbstractVector{<:Integer})
     N = length(ids)
     out = Vector{UInt32}(undef, N)
     @inbounds for i in 1:N
@@ -139,10 +139,10 @@ function write_particles_typeid!(h::GSDFilesHandle, ids::AbstractVector{<:Intege
     if !isempty(h.typenames)
         NT = length(h.typenames)
         @inbounds for i in 1:N
-            @assert out[i] < UInt32(NT) "typeid=$(out[i]) out of range for NT=$NT"
+            @assert out[i] < UInt32(NT) "typeids=$(out[i]) out of range for NT=$NT"
         end
     end
-    write_chunk_raw!(h.user, "particles/typeid";
+    write_chunk_raw!(h.user, "particles/typeids";
                      type_code = OVITO_UINT32, N = N, M = 1, data = out)
     return nothing
 end
@@ -244,10 +244,10 @@ function write_bonds_types!(h::GSDFilesHandle, typenames::Vector{String})
     nothing
 end
 
-"bonds/typeid : uint32 Nb×1 (0‑based type ids)"
-function write_bonds_typeid!(h::GSDFilesHandle, typeid::AbstractVector{<:Integer})
-    Nb = length(typeid)
-    write_chunk_raw!(h.user, "bonds/typeid"; type_code=OVITO_UINT32, N=Nb, M=1, data=UInt32.(typeid))
+"bonds/typeids : uint32 Nb×1 (0‑based type ids)"
+function write_bonds_typeids!(h::GSDFilesHandle, typeids::AbstractVector{<:Integer})
+    Nb = length(typeids)
+    write_chunk_raw!(h.user, "bonds/typeids"; type_code=OVITO_UINT32, N=Nb, M=1, data=UInt32.(typeids))
     nothing
 end
 
@@ -273,10 +273,10 @@ function write_angles_types!(h::GSDFilesHandle, typenames::Vector{String})
     nothing
 end
 
-"angles/typeid : uint32 Na×1"
-function write_angles_typeid!(h::GSDFilesHandle, typeid::AbstractVector{<:Integer})
-    Na = length(typeid)
-    write_chunk_raw!(h.user, "angles/typeid"; type_code=OVITO_UINT32, N=Na, M=1, data=UInt32.(typeid))
+"angles/typeids : uint32 Na×1"
+function write_angles_typeids!(h::GSDFilesHandle, typeids::AbstractVector{<:Integer})
+    Na = length(typeids)
+    write_chunk_raw!(h.user, "angles/typeids"; type_code=OVITO_UINT32, N=Na, M=1, data=UInt32.(typeids))
     nothing
 end
 
@@ -302,10 +302,10 @@ function write_dihedrals_types!(h::GSDFilesHandle, typenames::Vector{String})
     nothing
 end
 
-"dihedrals/typeid : uint32 Nd×1"
-function write_dihedrals_typeid!(h::GSDFilesHandle, typeid::AbstractVector{<:Integer})
-    Nd = length(typeid)
-    write_chunk_raw!(h.user, "dihedrals/typeid"; type_code=OVITO_UINT32, N=Nd, M=1, data=UInt32.(typeid))
+"dihedrals/typeids : uint32 Nd×1"
+function write_dihedrals_typeids!(h::GSDFilesHandle, typeids::AbstractVector{<:Integer})
+    Nd = length(typeids)
+    write_chunk_raw!(h.user, "dihedrals/typeids"; type_code=OVITO_UINT32, N=Nd, M=1, data=UInt32.(typeids))
     nothing
 end
 
@@ -331,10 +331,10 @@ function write_impropers_types!(h::GSDFilesHandle, typenames::Vector{String})
     nothing
 end
 
-"impropers/typeid : uint32 Ni×1"
-function write_impropers_typeid!(h::GSDFilesHandle, typeid::AbstractVector{<:Integer})
-    Ni = length(typeid)
-    write_chunk_raw!(h.user, "impropers/typeid"; type_code=OVITO_UINT32, N=Ni, M=1, data=UInt32.(typeid))
+"impropers/typeids : uint32 Ni×1"
+function write_impropers_typeids!(h::GSDFilesHandle, typeids::AbstractVector{<:Integer})
+    Ni = length(typeids)
+    write_chunk_raw!(h.user, "impropers/typeids"; type_code=OVITO_UINT32, N=Ni, M=1, data=UInt32.(typeids))
     nothing
 end
 
