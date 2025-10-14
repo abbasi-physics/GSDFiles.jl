@@ -218,9 +218,9 @@ end
     GSDFiles.write_configuration_box!(h, box)
     GSDFiles.write_particles_N!(h, N)
     GSDFiles.write_particles_types!(h, types)
-    GSDFiles.write_particles_typeids!(h, typeid)
-    GSDFiles.write_particles_positions!(h, pos)
-    GSDFiles.write_particles_velocities!(h, vel)
+    GSDFiles.write_particles_typeid!(h, typeid)
+    GSDFiles.write_particles_position!(h, pos)
+    GSDFiles.write_particles_velocity!(h, vel)
 
     GSDFiles.end_frame!(h)
     GSDFiles.close_gsd(h)
@@ -246,7 +246,7 @@ end
 
     # Expected chunk names present
     expected_names = Set(["configuration/box","particles/N","particles/types",
-                          "particles/typeids","particles/positions","particles/velocities"])
+                          "particles/typeid","particles/position","particles/velocity"])
     @test expected_names ⊆ Set(names)
 
     # Verify index entries have valid type codes and consistent sizes
@@ -295,14 +295,14 @@ end
     @test M ≥ maxlen + 1
 
     # typeid
-    etid = one_entry("particles/typeids")
+    etid = one_entry("particles/typeid")
     @test etid.typ == GSD_TYPE_UINT32
     @test etid.N == UInt64(N) && etid.M == 1
     tid_vec = read_chunk_vector(io, etid)
     @test tid_vec == typeid
 
     # position (row-major N×3)
-    epos = one_entry("particles/positions")
+    epos = one_entry("particles/position")
     @test epos.typ == GSD_TYPE_FLOAT
     @test epos.N == UInt64(N) && epos.M == 3
     pos_vec = read_chunk_vector(io, epos)
@@ -310,7 +310,7 @@ end
     @test pos_mat == pos
 
     # velocity (row-major N×3)
-    evel = one_entry("particles/velocities")
+    evel = one_entry("particles/velocity")
     @test evel.typ == GSD_TYPE_FLOAT
     @test evel.N == UInt64(N) && evel.M == 3
     vel_vec = read_chunk_vector(io, evel)
@@ -352,16 +352,16 @@ end
     GSDFiles.write_configuration_box!(h, box)
     GSDFiles.write_particles_N!(h, N)
     GSDFiles.write_particles_types!(h, types)
-    GSDFiles.write_particles_typeids!(h, typeid)
-    GSDFiles.write_particles_positions!(h, pos1)
+    GSDFiles.write_particles_typeid!(h, typeid)
+    GSDFiles.write_particles_position!(h, pos1)
     GSDFiles.end_frame!(h)
 
     # Frame 1 (same types order)
     GSDFiles.write_configuration_box!(h, box)
     GSDFiles.write_particles_N!(h, N)
     GSDFiles.write_particles_types!(h, types)  # same order enforced
-    GSDFiles.write_particles_typeids!(h, typeid)
-    GSDFiles.write_particles_positions!(h, pos2)
+    GSDFiles.write_particles_typeid!(h, typeid)
+    GSDFiles.write_particles_position!(h, pos2)
     GSDFiles.end_frame!(h)
 
     GSDFiles.close_gsd(h)
@@ -376,7 +376,7 @@ end
 
     # Validate positions in both frames
     function read_pos_for_frame(frame)
-        ents = find_entries_by_name(entries, names, "particles/positions")
+        ents = find_entries_by_name(entries, names, "particles/position")
         e = only(filter(e->e.frame==frame, ents))
         vec = read_chunk_vector(io, e)
         return unflatten_rowmajor(vec, Int(e.N), Int(e.M))
@@ -405,11 +405,11 @@ end
     @test_throws AssertionError GSDFiles.write_particles_types!(h, ["B","A"])
 
     # 2) Out-of-range typeid
-    @test_throws AssertionError GSDFiles.write_particles_typeids!(h, [0,2])  # NT=2 -> ids must be 0 or 1
+    @test_throws AssertionError GSDFiles.write_particles_typeid!(h, [0,2])  # NT=2 -> ids must be 0 or 1
 
     # 3) Bad shapes for position/velocity
-    @test_throws AssertionError GSDFiles.write_particles_positions!(h, Float32[0 1; 2 3])  # M≠3
-    @test_throws AssertionError GSDFiles.write_particles_velocities!(h, Float32[0 0 0 0])   # not N×3
+    @test_throws AssertionError GSDFiles.write_particles_position!(h, Float32[0 1; 2 3])  # M≠3
+    @test_throws AssertionError GSDFiles.write_particles_velocity!(h, Float32[0 0 0 0])   # not N×3
 
     # 4) particles/N negative
     @test_throws AssertionError GSDFiles.write_particles_N!(h, -1)
@@ -470,9 +470,9 @@ function _write_frame_2d!(h::GSDFiles.GSDFilesHandle; step::Integer, Lx::Float32
     GSDFiles.HOOMDWriter.write_configuration_box!(h, (Lx, Ly, 1.0f0, 0.0f0, 0.0f0, 0.0f0))
     GSDFiles.HOOMDWriter.write_particles_N!(h, N)
     GSDFiles.HOOMDWriter.write_particles_types!(h, types)
-    GSDFiles.HOOMDWriter.write_particles_typeids!(h, typeid0)
-    GSDFiles.HOOMDWriter.write_particles_positions!(h, pos)
-    GSDFiles.HOOMDWriter.write_particles_velocities!(h, vel)
+    GSDFiles.HOOMDWriter.write_particles_typeid!(h, typeid0)
+    GSDFiles.HOOMDWriter.write_particles_position!(h, pos)
+    GSDFiles.HOOMDWriter.write_particles_velocity!(h, vel)
     GSDFiles.end_frame!(h)
 end
 
@@ -486,9 +486,9 @@ function _write_frame_3d!(h::GSDFiles.GSDFilesHandle; step::Integer, L::NTuple{3
     GSDFiles.HOOMDWriter.write_configuration_box!(h, (L[1], L[2], L[3], 0.0f0, 0.0f0, 0.0f0))
     GSDFiles.HOOMDWriter.write_particles_N!(h, N)
     GSDFiles.HOOMDWriter.write_particles_types!(h, types)
-    GSDFiles.HOOMDWriter.write_particles_typeids!(h, typeid0)
-    GSDFiles.HOOMDWriter.write_particles_positions!(h, pos)
-    GSDFiles.HOOMDWriter.write_particles_velocities!(h, vel)
+    GSDFiles.HOOMDWriter.write_particles_typeid!(h, typeid0)
+    GSDFiles.HOOMDWriter.write_particles_position!(h, pos)
+    GSDFiles.HOOMDWriter.write_particles_velocity!(h, vel)
     GSDFiles.end_frame!(h)
 end
 
@@ -526,15 +526,15 @@ _pad3(X::AbstractMatrix{<:Real}) = hcat(X, zeros(eltype(X), size(X,1), 1))
     @test collect(f1.configuration.box) == Float32[10, 12, 1, 0, 0, 0]
     @test f1.particles.N == N
     @test Vector{String}(f1.particles.types) == types
-    @test f1.particles.typeids == typeid0
-    @test size(f1.particles.positions) == (N,3)
-    @test size(f1.particles.velocities) == (N,3)
-    @test all(isapprox.(f1.particles.positions[:,3], 0f0))
+    @test f1.particles.typeid == typeid0
+    @test size(f1.particles.position) == (N,3)
+    @test size(f1.particles.velocity) == (N,3)
+    @test all(isapprox.(f1.particles.position[:,3], 0f0))
 
     f2 = GSDFiles.read_frame(r, 2)
     @test f2.configuration.step == UInt64(5)
-    @test f2.particles.positions ≈ pos3b
-    @test f2.particles.velocities ≈ vel3b
+    @test f2.particles.position ≈ pos3b
+    @test f2.particles.velocity ≈ vel3b
 
     # bounds
     @test_throws BoundsError GSDFiles.read_frame(r, 0)
@@ -569,9 +569,9 @@ end
     @test f.configuration.dimensions == UInt8(3)
     @test collect(f.configuration.box) == Float32[L[1],L[2],L[3],0,0,0]
     @test f.particles.N == N
-    @test f.particles.typeids == typeid0
-    @test f.particles.positions ≈ pos3
-    @test all(isapprox.(f.particles.velocities, 0f0))
+    @test f.particles.typeid == typeid0
+    @test f.particles.position ≈ pos3
+    @test all(isapprox.(f.particles.velocity, 0f0))
     GSDFiles.close(r)
 end
 
@@ -594,14 +594,14 @@ end
     GSDFiles.HOOMDWriter.write_configuration_box!(h, (5f0, 6f0, 1f0, 0f0, 0f0, 0f0))
     GSDFiles.HOOMDWriter.write_particles_N!(h, N)
     GSDFiles.HOOMDWriter.write_particles_types!(h, types)
-    GSDFiles.HOOMDWriter.write_particles_typeids!(h, typeid0)
-    GSDFiles.HOOMDWriter.write_particles_positions!(h, pos3)
-    GSDFiles.HOOMDWriter.write_particles_velocities!(h, vel3)
+    GSDFiles.HOOMDWriter.write_particles_typeid!(h, typeid0)
+    GSDFiles.HOOMDWriter.write_particles_position!(h, pos3)
+    GSDFiles.HOOMDWriter.write_particles_velocity!(h, vel3)
 
     # Extra topology chunks in the SAME frame
     GSDFiles.HOOMDWriter.write_bonds_types!(h, ["A-A"])
     GSDFiles.HOOMDWriter.write_bonds_N!(h, 0)
-    GSDFiles.HOOMDWriter.write_bonds_typeids!(h, UInt32[])
+    GSDFiles.HOOMDWriter.write_bonds_typeid!(h, UInt32[])
     GSDFiles.HOOMDWriter.write_bonds_group!(h, reshape(UInt32[], 0, 2))
 
     # Now end the frame exactly once
@@ -646,9 +646,9 @@ end
     # Particles
     GSDFiles.HOOMDWriter.write_particles_N!(h, N)
     GSDFiles.HOOMDWriter.write_particles_types!(h, types)
-    GSDFiles.HOOMDWriter.write_particles_typeids!(h, typeid)
-    GSDFiles.HOOMDWriter.write_particles_positions!(h, pos)
-    GSDFiles.HOOMDWriter.write_particles_velocities!(h, vel)
+    GSDFiles.HOOMDWriter.write_particles_typeid!(h, typeid)
+    GSDFiles.HOOMDWriter.write_particles_position!(h, pos)
+    GSDFiles.HOOMDWriter.write_particles_velocity!(h, vel)
 
     # --- Topology: Bonds (N×2) ---
     bond_types = ["A-B", "B-C"]
@@ -659,7 +659,7 @@ end
     ]
     GSDFiles.HOOMDWriter.write_bonds_types!(h, bond_types)
     GSDFiles.HOOMDWriter.write_bonds_N!(h, size(bond_group,1))
-    GSDFiles.HOOMDWriter.write_bonds_typeids!(h, bond_typeid)
+    GSDFiles.HOOMDWriter.write_bonds_typeid!(h, bond_typeid)
     GSDFiles.HOOMDWriter.write_bonds_group!(h, bond_group)
 
     # --- Topology: Angles (N×3) ---
@@ -670,7 +670,7 @@ end
     ]
     GSDFiles.HOOMDWriter.write_angles_types!(h, angle_types)
     GSDFiles.HOOMDWriter.write_angles_N!(h, size(angle_group,1))
-    GSDFiles.HOOMDWriter.write_angles_typeids!(h, angle_typeid)
+    GSDFiles.HOOMDWriter.write_angles_typeid!(h, angle_typeid)
     GSDFiles.HOOMDWriter.write_angles_group!(h, angle_group)
 
     # --- Topology: Dihedrals (N×4) ---
@@ -681,7 +681,7 @@ end
     ]
     GSDFiles.HOOMDWriter.write_dihedrals_types!(h, dihedral_types)
     GSDFiles.HOOMDWriter.write_dihedrals_N!(h, size(dihedral_group,1))
-    GSDFiles.HOOMDWriter.write_dihedrals_typeids!(h, dihedral_typeid)
+    GSDFiles.HOOMDWriter.write_dihedrals_typeid!(h, dihedral_typeid)
     GSDFiles.HOOMDWriter.write_dihedrals_group!(h, dihedral_group)
 
     # --- Topology: Impropers (N×4) ---
@@ -692,7 +692,7 @@ end
     ]
     GSDFiles.HOOMDWriter.write_impropers_types!(h, improper_types)
     GSDFiles.HOOMDWriter.write_impropers_N!(h, size(improper_group,1))
-    GSDFiles.HOOMDWriter.write_impropers_typeids!(h, improper_typeid)
+    GSDFiles.HOOMDWriter.write_impropers_typeid!(h, improper_typeid)
     GSDFiles.HOOMDWriter.write_impropers_group!(h, improper_group)
 
     # Close the frame and file
@@ -713,7 +713,7 @@ end
     b = GSDFiles.read_bonds(r, 1)
     @test b.N == 2
     @test b.types == bond_types
-    @test b.typeids == bond_typeid
+    @test b.typeid == bond_typeid
     @test size(b.group) == (2,2)
     @test b.group == bond_group
 
@@ -721,7 +721,7 @@ end
     a = GSDFiles.read_angles(r, 1)
     @test a.N == 1
     @test a.types == angle_types
-    @test a.typeids == angle_typeid
+    @test a.typeid == angle_typeid
     @test size(a.group) == (1,3)
     @test a.group == angle_group
 
@@ -729,7 +729,7 @@ end
     d = GSDFiles.read_dihedrals(r, 1)
     @test d.N == 1
     @test d.types == dihedral_types
-    @test d.typeids == dihedral_typeid
+    @test d.typeid == dihedral_typeid
     @test size(d.group) == (1,4)
     @test d.group == dihedral_group
 
@@ -737,7 +737,7 @@ end
     im = GSDFiles.read_impropers(r, 1)
     @test im.N == 1
     @test im.types == improper_types
-    @test im.typeids == improper_typeid
+    @test im.typeid == improper_typeid
     @test size(im.group) == (1,4)
     @test im.group == improper_group
 
@@ -779,10 +779,10 @@ end
     GSDFiles.HOOMDWriter.write_configuration_box!(h, (5f0, 5f0, 5f0, 0f0, 0f0, 0f0))
     GSDFiles.HOOMDWriter.write_particles_N!(h, N)
     GSDFiles.HOOMDWriter.write_particles_types!(h, types)
-    GSDFiles.HOOMDWriter.write_particles_typeids!(h, typeid)
-    GSDFiles.HOOMDWriter.write_particles_positions!(h, pos)
-    GSDFiles.HOOMDWriter.write_particles_velocities!(h, vel)
-    GSDFiles.HOOMDWriter.write_particles_forces!(h, F)
+    GSDFiles.HOOMDWriter.write_particles_typeid!(h, typeid)
+    GSDFiles.HOOMDWriter.write_particles_position!(h, pos)
+    GSDFiles.HOOMDWriter.write_particles_velocity!(h, vel)
+    GSDFiles.HOOMDWriter.write_particles_force!(h, F)
     GSDFiles.end_frame!(h)
     GSDFiles.close_gsd(h)
 
@@ -792,7 +792,7 @@ end
     names = read_names(io, hdr)
     entries = read_index(io, hdr)
 
-    for nm in ("particles/forces",)
+    for nm in ("particles/force", "particles/property/force")
         ents = find_entries_by_name(entries, names, nm)
         @test !isempty(ents)
         for e in ents; @test e.frame == 0; end
@@ -810,7 +810,7 @@ end
     r = GSDFiles.open_read(path)
     @test GSDFiles.nframes(r) == 1
     f = GSDFiles.read_frame(r, 1)
-    @test (:forces in propertynames(f.particles))
-    @test f.particles.forces == F
+    @test (:force in propertynames(f.particles))
+    @test f.particles.force == F
     GSDFiles.close(r)
 end

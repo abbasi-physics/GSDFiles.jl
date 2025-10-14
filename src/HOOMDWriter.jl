@@ -3,16 +3,16 @@ module HOOMDWriter
 using ..GSDFiles: GSDFilesHandle, write_chunk_raw!, rowmajor
 
 export write_configuration_step!, write_configuration_dimensions!, write_configuration_box!,
-       write_particles_N!, write_particles_types!, write_particles_typeids!,
-       write_particles_positions!, write_particles_velocities!, write_particles_forces!,
+       write_particles_N!, write_particles_types!, write_particles_typeid!,
+       write_particles_position!, write_particles_velocity!, write_particles_force!,
        write_particles_diameter!, write_particles_diameter_by_type!,
        write_particles_type_shapes!, write_particles_orientation!,
        write_particles_inertia!, write_particles_angmom!
 
-export write_bonds_N!, write_bonds_types!, write_bonds_typeids!, write_bonds_group!,
-       write_angles_N!, write_angles_types!, write_angles_typeids!, write_angles_group!,
-       write_dihedrals_N!, write_dihedrals_types!, write_dihedrals_typeids!, write_dihedrals_group!,
-       write_impropers_N!, write_impropers_types!, write_impropers_typeids!, write_impropers_group!
+export write_bonds_N!, write_bonds_types!, write_bonds_typeid!, write_bonds_group!,
+       write_angles_N!, write_angles_types!, write_angles_typeid!, write_angles_group!,
+       write_dihedrals_N!, write_dihedrals_types!, write_dihedrals_typeid!, write_dihedrals_group!,
+       write_impropers_N!, write_impropers_types!, write_impropers_typeid!, write_impropers_group!
 
 # OVITO on-disk type codes (empirically: +1 vs upstream C enum)
 const OVITO_UINT8    = UInt8(1)
@@ -127,8 +127,8 @@ function write_particles_types!(h::GSDFilesHandle, typenames::Vector{String})
     return nothing
 end
 
-"particles/typeids : uint32 N×1 (force OVITO code)"
-function write_particles_typeids!(h::GSDFilesHandle, ids::AbstractVector{<:Integer})
+"particles/typeid : uint32 N×1 (force OVITO code)"
+function write_particles_typeid!(h::GSDFilesHandle, ids::AbstractVector{<:Integer})
     N = length(ids)
     out = Vector{UInt32}(undef, N)
     @inbounds for i in 1:N
@@ -142,43 +142,45 @@ function write_particles_typeids!(h::GSDFilesHandle, ids::AbstractVector{<:Integ
             @assert out[i] < UInt32(NT) "typeids=$(out[i]) out of range for NT=$NT"
         end
     end
-    write_chunk_raw!(h.user, "particles/typeids";
+    write_chunk_raw!(h.user, "particles/typeid";
                      type_code = OVITO_UINT32, N = N, M = 1, data = out)
     return nothing
 end
 
-"particles/positions : float32 N×3 (row‑major) (force OVITO code)"
-function write_particles_positions!(h::GSDFilesHandle, pos::AbstractMatrix{<:Real})
-    N, M = size(pos); @assert M == 3 "particles/positions must be N×3"
+"particles/position : float32 N×3 (row‑major) (force OVITO code)"
+function write_particles_position!(h::GSDFilesHandle, pos::AbstractMatrix{<:Real})
+    N, M = size(pos); @assert M == 3 "particles/position must be N×3"
     A = Array{Float32}(undef, N, 3)
     @inbounds for i in 1:N, j in 1:3
         A[i,j] = Float32(pos[i,j])
     end
-    write_chunk_raw!(h.user, "particles/positions";
+    write_chunk_raw!(h.user, "particles/position";
                      type_code = OVITO_FLOAT32, N = N, M = 3, data = rowmajor(A))
     return nothing
 end
 
-"particles/velocities : float32 N×3 (row‑major) (force OVITO code)"
-function write_particles_velocities!(h::GSDFilesHandle, vel::AbstractMatrix{<:Real})
-    N, M = size(vel); @assert M == 3 "particles/velocities must be N×3"
+"particles/velocity : float32 N×3 (row‑major) (force OVITO code)"
+function write_particles_velocity!(h::GSDFilesHandle, vel::AbstractMatrix{<:Real})
+    N, M = size(vel); @assert M == 3 "particles/velocity must be N×3"
     A = Array{Float32}(undef, N, 3)
     @inbounds for i in 1:N, j in 1:3
         A[i,j] = Float32(vel[i,j])
     end
-    write_chunk_raw!(h.user, "particles/velocities";
+    write_chunk_raw!(h.user, "particles/velocity";
                      type_code = OVITO_FLOAT32, N = N, M = 3, data = rowmajor(A))
     return nothing
 end
 
-"particles/forces : float32 N×3 (row‑major) (force OVITO code)"
-function write_particles_forces!(h::GSDFilesHandle, frc::AbstractMatrix{<:Real})
-    N, M = size(frc); @assert M == 3 "particles/forces must be N×3"
+"particles/force : float32 N×3 (row‑major) (force OVITO code)"
+function write_particles_force!(h::GSDFilesHandle, frc::AbstractMatrix{<:Real})
+    N, M = size(frc); @assert M == 3 "particles/force must be N×3"
     A = Array{Float32}(undef, N, 3)
     @inbounds for i in 1:N, j in 1:3
         A[i,j] = Float32(frc[i,j])
     end
-    write_chunk_raw!(h.user, "particles/forces";
+    write_chunk_raw!(h.user, "particles/force";
+                     type_code = OVITO_FLOAT32, N = N, M = 3, data = rowmajor(A))
+    write_chunk_raw!(h.user, "particles/property/force";
                      type_code = OVITO_FLOAT32, N = N, M = 3, data = rowmajor(A))
     return nothing
 end
@@ -244,10 +246,10 @@ function write_bonds_types!(h::GSDFilesHandle, typenames::Vector{String})
     nothing
 end
 
-"bonds/typeids : uint32 Nb×1 (0‑based type ids)"
-function write_bonds_typeids!(h::GSDFilesHandle, typeids::AbstractVector{<:Integer})
-    Nb = length(typeids)
-    write_chunk_raw!(h.user, "bonds/typeids"; type_code=OVITO_UINT32, N=Nb, M=1, data=UInt32.(typeids))
+"bonds/typeid : uint32 Nb×1 (0‑based type ids)"
+function write_bonds_typeid!(h::GSDFilesHandle, typeid::AbstractVector{<:Integer})
+    Nb = length(typeid)
+    write_chunk_raw!(h.user, "bonds/typeid"; type_code=OVITO_UINT32, N=Nb, M=1, data=UInt32.(typeid))
     nothing
 end
 
@@ -273,10 +275,10 @@ function write_angles_types!(h::GSDFilesHandle, typenames::Vector{String})
     nothing
 end
 
-"angles/typeids : uint32 Na×1"
-function write_angles_typeids!(h::GSDFilesHandle, typeids::AbstractVector{<:Integer})
-    Na = length(typeids)
-    write_chunk_raw!(h.user, "angles/typeids"; type_code=OVITO_UINT32, N=Na, M=1, data=UInt32.(typeids))
+"angles/typeid : uint32 Na×1"
+function write_angles_typeid!(h::GSDFilesHandle, typeid::AbstractVector{<:Integer})
+    Na = length(typeid)
+    write_chunk_raw!(h.user, "angles/typeid"; type_code=OVITO_UINT32, N=Na, M=1, data=UInt32.(typeid))
     nothing
 end
 
@@ -302,10 +304,10 @@ function write_dihedrals_types!(h::GSDFilesHandle, typenames::Vector{String})
     nothing
 end
 
-"dihedrals/typeids : uint32 Nd×1"
-function write_dihedrals_typeids!(h::GSDFilesHandle, typeids::AbstractVector{<:Integer})
-    Nd = length(typeids)
-    write_chunk_raw!(h.user, "dihedrals/typeids"; type_code=OVITO_UINT32, N=Nd, M=1, data=UInt32.(typeids))
+"dihedrals/typeid : uint32 Nd×1"
+function write_dihedrals_typeid!(h::GSDFilesHandle, typeid::AbstractVector{<:Integer})
+    Nd = length(typeid)
+    write_chunk_raw!(h.user, "dihedrals/typeid"; type_code=OVITO_UINT32, N=Nd, M=1, data=UInt32.(typeid))
     nothing
 end
 
@@ -331,10 +333,10 @@ function write_impropers_types!(h::GSDFilesHandle, typenames::Vector{String})
     nothing
 end
 
-"impropers/typeids : uint32 Ni×1"
-function write_impropers_typeids!(h::GSDFilesHandle, typeids::AbstractVector{<:Integer})
-    Ni = length(typeids)
-    write_chunk_raw!(h.user, "impropers/typeids"; type_code=OVITO_UINT32, N=Ni, M=1, data=UInt32.(typeids))
+"impropers/typeid : uint32 Ni×1"
+function write_impropers_typeid!(h::GSDFilesHandle, typeid::AbstractVector{<:Integer})
+    Ni = length(typeid)
+    write_chunk_raw!(h.user, "impropers/typeid"; type_code=OVITO_UINT32, N=Ni, M=1, data=UInt32.(typeid))
     nothing
 end
 
