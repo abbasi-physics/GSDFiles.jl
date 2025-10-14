@@ -9,7 +9,7 @@ export GSDWriter, write_chunk!, write_chunk_raw!, end_frame!, close!,
        open_gsd, close_gsd, end_frame!,
        write_configuration_box!, write_configuration_step!, write_configuration_dimensions!,
        write_particles_N!, write_particles_types!, write_particles_typeid!,
-       write_particles_position!, write_particles_velocity!, write_particles_force!
+       write_particles_positions!, write_particles_velocities!, write_particles_forces!
 
 export open_read, close, nframes, read_frame,
        read_bonds, read_angles, read_dihedrals, read_impropers
@@ -460,21 +460,21 @@ function read_frame(r::GSDReader, i::Integer)::Frame
     tid_e.type == _R_UINT32 || error("particles/typeid dtype mismatch")
     typeid = _read_vec(r.io, tid_e, UInt32)
 
-    pos_e = only(_byname(r, ents, "particles/position"))
-    position = _read_mat_f32(r.io, pos_e)  # N×3
+    pos_e = only(_byname(r, ents, "particles/positions"))
+    positions = _read_mat_f32(r.io, pos_e)  # N×3
 
-    vel_e = only(_byname(r, ents, "particles/velocity"))
-    velocity = _read_mat_f32(r.io, vel_e)  # N×3
+    vel_e = only(_byname(r, ents, "particles/velocities"))
+    velocities = _read_mat_f32(r.io, vel_e)  # N×3
 
-    # Optional: custom extension field for per-particle force (N×3 Float32)
-    frc_e = _maybe_one(r, ents, "particles/force")
+    # Optional: custom extension field for per-particle forces (N×3 Float32)
+    frc_e = _maybe_one(r, ents, "particles/forces")
 
     conf = (step = step, dimensions = dims, box = box)
     if frc_e === nothing
-        parts = (N = N, types = types, typeid = typeid, position = position, velocity = velocity)
+        parts = (N = N, types = types, typeid = typeid, positions = positions, velocities = velocities)
     else
-        force = _read_mat_f32(r.io, frc_e)  # N×3
-        parts = (N = N, types = types, typeid = typeid, position = position, velocity = velocity, force = force)
+        forces = _read_mat_f32(r.io, frc_e)  # N×3
+        parts = (N = N, types = types, typeid = typeid, positions = positions, velocities = velocities, forces = forces)
     end
     Frame(conf, parts)
 end

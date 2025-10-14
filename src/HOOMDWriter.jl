@@ -4,7 +4,7 @@ using ..GSDFiles: GSDFilesHandle, write_chunk_raw!, rowmajor
 
 export write_configuration_step!, write_configuration_dimensions!, write_configuration_box!,
        write_particles_N!, write_particles_types!, write_particles_typeid!,
-       write_particles_position!, write_particles_velocity!, write_particles_force!,
+       write_particles_positions!, write_particles_velocities!, write_particles_forces!,
        write_particles_diameter!, write_particles_diameter_by_type!,
        write_particles_type_shapes!, write_particles_orientation!,
        write_particles_inertia!, write_particles_angmom!
@@ -147,38 +147,38 @@ function write_particles_typeid!(h::GSDFilesHandle, ids::AbstractVector{<:Intege
     return nothing
 end
 
-"particles/position : float32 N×3 (row‑major) (force OVITO code)"
-function write_particles_position!(h::GSDFilesHandle, pos::AbstractMatrix{<:Real})
-    N, M = size(pos); @assert M == 3 "particles/position must be N×3"
+"particles/positions : float32 N×3 (row‑major) (force OVITO code)"
+function write_particles_positions!(h::GSDFilesHandle, pos::AbstractMatrix{<:Real})
+    N, M = size(pos); @assert M == 3 "particles/positions must be N×3"
     A = Array{Float32}(undef, N, 3)
     @inbounds for i in 1:N, j in 1:3
         A[i,j] = Float32(pos[i,j])
     end
-    write_chunk_raw!(h.user, "particles/position";
+    write_chunk_raw!(h.user, "particles/positions";
                      type_code = OVITO_FLOAT32, N = N, M = 3, data = rowmajor(A))
     return nothing
 end
 
-"particles/velocity : float32 N×3 (row‑major) (force OVITO code)"
-function write_particles_velocity!(h::GSDFilesHandle, vel::AbstractMatrix{<:Real})
-    N, M = size(vel); @assert M == 3 "particles/velocity must be N×3"
+"particles/velocities : float32 N×3 (row‑major) (force OVITO code)"
+function write_particles_velocities!(h::GSDFilesHandle, vel::AbstractMatrix{<:Real})
+    N, M = size(vel); @assert M == 3 "particles/velocities must be N×3"
     A = Array{Float32}(undef, N, 3)
     @inbounds for i in 1:N, j in 1:3
         A[i,j] = Float32(vel[i,j])
     end
-    write_chunk_raw!(h.user, "particles/velocity";
+    write_chunk_raw!(h.user, "particles/velocities";
                      type_code = OVITO_FLOAT32, N = N, M = 3, data = rowmajor(A))
     return nothing
 end
 
-"particles/force : float32 N×3 (row‑major) (force OVITO code)"
-function write_particles_force!(h::GSDFilesHandle, frc::AbstractMatrix{<:Real})
-    N, M = size(frc); @assert M == 3 "particles/force must be N×3"
+"particles/forces : float32 N×3 (row‑major) (force OVITO code)"
+function write_particles_forces!(h::GSDFilesHandle, frc::AbstractMatrix{<:Real})
+    N, M = size(frc); @assert M == 3 "particles/forces must be N×3"
     A = Array{Float32}(undef, N, 3)
     @inbounds for i in 1:N, j in 1:3
         A[i,j] = Float32(frc[i,j])
     end
-    write_chunk_raw!(h.user, "particles/force";
+    write_chunk_raw!(h.user, "particles/forces";
                      type_code = OVITO_FLOAT32, N = N, M = 3, data = rowmajor(A))
     return nothing
 end
