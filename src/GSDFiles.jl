@@ -6,7 +6,7 @@ import Base: close
 # Public API (exports)
 # =========================
 export GSDWriter, write_chunk!, write_chunk_raw!, end_frame!, close!,
-       open_gsd, close_gsd, end_frame!,
+       open_gsd, close_gsd, end_frame!, sync!,
        write_configuration_box!, write_configuration_step!, write_configuration_dimensions!,
        write_particles_N!, write_particles_types!, write_particles_typeid!,
        write_particles_position!, write_particles_velocity!, write_particles_force!
@@ -251,6 +251,46 @@ function close!(w::GSDWriter)
     return nothing
 end
 
+# -------------------------
+# Durable sync (write index + names, update header without closing)
+# -------------------------
+function sync!(w::GSDWriter)
+    # Build namelist with trailing empty name and 64B alignment
+    names_blob = copy(w.names_blob)
+    if isempty(names_blob) || names_blob[end] != 0x00
+        push!(names_blob, 0x00)
+    end
+    push!(names_blob, 0x00)
+    _pad_to_multiple!(names_blob, GSD_NAME_SIZE)
+
+    # Write index (sorted) at end of file
+    sort!(w.index; by = e -> (e.frame, e.id))
+    seekend(w.io)
+    idx_loc = position(w.io)
+    for e in w.index
+        write(w.io, e.frame); write(w.io, e.N); write(w.io, e.location)
+        write(w.io, e.M); write(w.io, e.id); write(w.io, e.type); write(w.io, e.flags)
+    end
+    # Sentinel
+    write(w.io, UInt64(0)); write(w.io, UInt64(0)); write(w.io, Int64(0))
+    write(w.io, UInt32(0)); write(w.io, UInt16(0)); write(w.io, UInt8(0)); write(w.io, UInt8(0))
+    idx_alloc = UInt64(length(w.index) + 1)
+
+    # Write namelist blob
+    seekend(w.io)
+    nl_loc = position(w.io)
+    write(w.io, names_blob)
+    nl_segments = UInt64(div(length(names_blob), GSD_NAME_SIZE))
+
+    # Patch header to point to latest index/namelist
+    w.header.index_location             = UInt64(idx_loc)
+    w.header.index_allocated_entries    = idx_alloc
+    w.header.namelist_location          = UInt64(nl_loc)
+    w.header.namelist_allocated_entries = nl_segments
+    update_header_fields!(w.io, w.header)
+    return nothing
+end
+
 # =========================
 # High-level shim handle
 # =========================
@@ -267,6 +307,8 @@ function end_frame!(h::GSDFilesHandle)
     h.frame += 0x00000001
     return end_frame!(h.user)
 end
+
+sync!(h::GSDFilesHandle) = sync!(h.user)
 
 
 # =========================
