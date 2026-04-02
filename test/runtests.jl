@@ -214,13 +214,26 @@ end
          0.0  0.0  0.1;  0.1  0.0  0.0;
         -0.1  0.0  0.0;  0.0  0.1  0.0
     ]
+    virial = Float32[
+        1 2 3 4 5 6;
+        6 5 4 3 2 1;
+        1 0 0 0 0 0;
+        0 1 0 0 0 0;
+        0 0 1 0 0 0;
+        1 1 1 0 0 0;
+        2 3 4 5 6 7;
+        7 6 5 4 3 2
+    ]
 
+    GSDFiles.write_configuration_step!(h, 0)
+    GSDFiles.write_configuration_dimensions!(h, 3)
     GSDFiles.write_configuration_box!(h, box)
     GSDFiles.write_particles_N!(h, N)
     GSDFiles.write_particles_types!(h, types)
     GSDFiles.write_particles_typeid!(h, typeid)
     GSDFiles.write_particles_position!(h, pos)
     GSDFiles.write_particles_velocity!(h, vel)
+    GSDFiles.write_particles_virial!(h, virial)
 
     GSDFiles.end_frame!(h)
     GSDFiles.close_gsd(h)
@@ -246,7 +259,8 @@ end
 
     # Expected chunk names present
     expected_names = Set(["configuration/box","particles/N","particles/types",
-                          "particles/typeid","particles/position","particles/velocity"])
+                          "particles/typeid","particles/position","particles/velocity",
+                          "particles/virial","particles/property/virial"])
     @test expected_names ⊆ Set(names)
 
     # Verify index entries have valid type codes and consistent sizes
@@ -316,6 +330,31 @@ end
     vel_vec = read_chunk_vector(io, evel)
     vel_mat = unflatten_rowmajor(vel_vec, N, 3)
     @test vel_mat == vel
+
+    # virial (row-major N×6)
+    evir = one_entry("particles/virial")
+    @test evir.typ == GSD_TYPE_FLOAT
+    @test evir.N == UInt64(N) && evir.M == 6
+    vir_vec = read_chunk_vector(io, evir)
+    vir_mat = unflatten_rowmajor(vir_vec, N, 6)
+    @test vir_mat == virial
+
+    # property mirror for virial
+    evir_prop = one_entry("particles/property/virial")
+    @test evir_prop.typ == GSD_TYPE_FLOAT
+    @test evir_prop.N == UInt64(N) && evir_prop.M == 6
+    vir_prop_vec = read_chunk_vector(io, evir_prop)
+    vir_prop_mat = unflatten_rowmajor(vir_prop_vec, N, 6)
+    @test vir_prop_mat == virial
+
+    reader = GSDFiles.open_read(path)
+    try
+        frame = GSDFiles.read_frame(reader, 1)
+        @test hasproperty(frame.particles, :virial)
+        @test frame.particles.virial == virial
+    finally
+        GSDFiles.close(reader)
+    end
 
     @test hdr.index_allocated_entries ≥ 1  # sentinel included
     @test hdr.namelist_alloc_entries ≥ 2   # at least final empty name is 1 byte (actually ≥2 total)

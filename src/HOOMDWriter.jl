@@ -5,6 +5,7 @@ using ..GSDFiles: GSDFilesHandle, write_chunk_raw!, rowmajor
 export write_configuration_step!, write_configuration_dimensions!, write_configuration_box!,
        write_particles_N!, write_particles_types!, write_particles_typeid!,
        write_particles_position!, write_particles_velocity!, write_particles_force!,
+       write_particles_virial!,
        write_particles_diameter!, write_particles_diameter_by_type!,
        write_particles_type_shapes!, write_particles_orientation!,
        write_particles_inertia!, write_particles_angmom!
@@ -182,6 +183,22 @@ function write_particles_force!(h::GSDFilesHandle, frc::AbstractMatrix{<:Real})
                      type_code = OVITO_FLOAT32, N = N, M = 3, data = rowmajor(A))
     write_chunk_raw!(h.user, "particles/property/force";
                      type_code = OVITO_FLOAT32, N = N, M = 3, data = rowmajor(A))
+    return nothing
+end
+
+"particles/virial : float32 N×3 or N×6 (row-major, custom virial tensor components)"
+function write_particles_virial!(h::GSDFilesHandle, virial::AbstractMatrix{<:Real})
+    N, M = size(virial)
+    @assert M == 3 || M == 6 "particles/virial must be N×3 (2D: xx,yy,xy) or N×6 (3D: xx,yy,zz,xy,xz,yz)"
+    A = Array{Float32}(undef, N, M)
+    @inbounds for i in 1:N, j in 1:M
+        A[i,j] = Float32(virial[i,j])
+    end
+    data = rowmajor(A)
+    write_chunk_raw!(h.user, "particles/virial";
+                     type_code = OVITO_FLOAT32, N = N, M = M, data = data)
+    write_chunk_raw!(h.user, "particles/property/virial";
+                     type_code = OVITO_FLOAT32, N = N, M = M, data = data)
     return nothing
 end
 
