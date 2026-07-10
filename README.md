@@ -26,6 +26,9 @@ GSDFiles.write_particles_types!(h, ["A","B"])
 GSDFiles.write_particles_typeid!(h, UInt32[0,1])
 GSDFiles.write_particles_position!(h, Float32[0 0 0; 1 0 0])
 GSDFiles.write_particles_velocity!(h, zeros(Float32, 2, 3))
+GSDFiles.write_particles_diameter!(h, Float32[1.32, 0.62])
+GSDFiles.write_particles_mass!(h, Float32[15.999, 1.008])
+GSDFiles.write_particles_charge!(h, Float32[-0.8, 0.4])
 
 GSDFiles.end_frame!(h)
 GSDFiles.close_gsd(h)
@@ -33,3 +36,8 @@ GSDFiles.close_gsd(h)
 r = GSDFiles.open_read("demo.gsd")
 f = GSDFiles.read_frame(r, 1)
 GSDFiles.close(r)
+```
+
+The optional `particles/diameter`, `particles/mass`, and `particles/charge`
+chunks are exposed as `f.particles.diameter`, `f.particles.mass`, and
+`f.particles.charge` when present.

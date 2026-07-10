@@ -7,6 +7,7 @@ export write_configuration_step!, write_configuration_dimensions!, write_configu
        write_particles_position!, write_particles_velocity!, write_particles_force!,
        write_particles_virial!,
        write_particles_diameter!, write_particles_diameter_by_type!,
+       write_particles_mass!, write_particles_charge!,
        write_particles_type_shapes!, write_particles_orientation!,
        write_particles_inertia!, write_particles_angmom!
 
@@ -90,6 +91,22 @@ function write_particles_diameter!(h::GSDFilesHandle, diameter::AbstractVector{<
     data = Float32.(diameter)
     write_chunk_raw!(h.user, "particles/diameter";
                      type_code = OVITO_FLOAT32, N = N, M = 1, data = data)
+    return nothing
+end
+
+"particles/mass : float32 N×1 (per-particle masses)"
+function write_particles_mass!(h::GSDFilesHandle, mass::AbstractVector{<:Real})
+    data = Float32.(mass)
+    write_chunk_raw!(h.user, "particles/mass";
+                     type_code = OVITO_FLOAT32, N = length(data), M = 1, data = data)
+    return nothing
+end
+
+"particles/charge : float32 N×1 (per-particle charges)"
+function write_particles_charge!(h::GSDFilesHandle, charge::AbstractVector{<:Real})
+    data = Float32.(charge)
+    write_chunk_raw!(h.user, "particles/charge";
+                     type_code = OVITO_FLOAT32, N = length(data), M = 1, data = data)
     return nothing
 end
 

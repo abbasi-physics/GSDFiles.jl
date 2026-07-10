@@ -10,7 +10,8 @@ export GSDWriter, write_chunk!, write_chunk_raw!, end_frame!, close!,
        write_configuration_box!, write_configuration_step!, write_configuration_dimensions!,
        write_particles_N!, write_particles_types!, write_particles_typeid!,
        write_particles_position!, write_particles_velocity!, write_particles_force!,
-       write_particles_virial!
+       write_particles_virial!, write_particles_diameter!,
+       write_particles_diameter_by_type!, write_particles_mass!, write_particles_charge!
 
 export open_read, close, nframes, read_frame,
        read_bonds, read_angles, read_dihedrals, read_impropers
@@ -524,9 +525,24 @@ function read_frame(r::GSDReader, i::Integer)::Frame
         "particles/virial",
         "particles/property/virial",
     ])
+    diameter_e = _maybe_one(r, ents, "particles/diameter")
+    mass_e = _maybe_one(r, ents, "particles/mass")
+    charge_e = _maybe_one(r, ents, "particles/charge")
 
     conf = (step = step, dimensions = dims, box = box)
     parts = (N = N, types = types, typeid = typeid, position = position, velocity = velocity)
+    if diameter_e !== nothing
+        diameter_e.type == _R_FLOAT32 || error("particles/diameter dtype mismatch")
+        parts = merge(parts, (diameter = _read_vec(r.io, diameter_e, Float32),))
+    end
+    if mass_e !== nothing
+        mass_e.type == _R_FLOAT32 || error("particles/mass dtype mismatch")
+        parts = merge(parts, (mass = _read_vec(r.io, mass_e, Float32),))
+    end
+    if charge_e !== nothing
+        charge_e.type == _R_FLOAT32 || error("particles/charge dtype mismatch")
+        parts = merge(parts, (charge = _read_vec(r.io, charge_e, Float32),))
+    end
     if frc_e !== nothing
         force = _read_mat_f32(r.io, frc_e)  # N×3
         parts = merge(parts, (force = force,))
